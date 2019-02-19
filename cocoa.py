@@ -1,15 +1,23 @@
 import requests
 import getpass
+import pickle
 from jira.client import JIRA
 from json import JSONDecodeError
 
 
 class Connection(object):
     '''Instantiate a JIRA client object to www.cocoa.volkswagen.de'''
-    def __init__(self):
+    def __init__(self, stored_cookie=False):
         self.url = 'https://cocoa.volkswagen.de/sjira/'
-        self.cookies = self.authenticate()
-        self.jira = self.client()
+        if stored_cookie:
+            with open('cookie.pickle', 'rb') as f:
+                self.cookies = pickle.load(f)
+            self.jira = self.client()
+        else:
+            self.cookies = self.authenticate()
+            self.jira = self.client()
+            with open('cookie.pickle', 'wb') as f:
+                pickle.dump(self.cookies, f)
     
     def authenticate(self):
         '''Authenticates user and gets session cookie.'''

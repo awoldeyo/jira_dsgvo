@@ -25,8 +25,8 @@ class JiraDf(object):
     If True JIRA datatypes will be transformed according to default typeHandler.  
     '''
     
-    def __init__(self, issues, jira_client=None, frontendcolname=False, stringvalues=False):
-        self.df = to_dataframe(issues)
+    def __init__(self, issues, jira_client=None, frontendcolname=False, stringvalues=False, changelog=False):
+        self.df = to_dataframe(issues, changelog=changelog)
         self.issues = issues
         self.field = None
         self.col_mapping = None
@@ -78,7 +78,7 @@ class JiraDf(object):
             return self.df.columns.rename(index=str, columns=self.col_mapping)
 
 
-def to_dataframe(issues):
+def to_dataframe(issues, changelog):
     '''
     Create a pandas dataframe from a list of JIRA issues. By default creates 
     columns for JIRA 'id', 'key' and the JIRA issue object ('issue_object') itself.
@@ -93,6 +93,21 @@ def to_dataframe(issues):
     df['id'] = [i.id for i in issues]
     df['key'] = [i.key for i in issues]
     df['issue_object'] = [i for i in issues]
+    
+    if changelog:
+        table = []
+        for i in issues:
+            for his in i.changelog.histories:
+                for item in his.items:
+                    row = {}
+                    row['id'] = i.id
+                    row['date'] = his.created
+                    row['from'] = item.fromString
+                    row['to'] = item.toString
+                    table.append(row)
+        df_changelog = pd.DataFrame(table)
+        df = pd.merge(df, df_changelog, how='outer', on='id')
+
     return df
 
 
