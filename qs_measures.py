@@ -16,8 +16,9 @@ jira = jira.jira
 jql_str = '''project = DC 
              AND labels in (VW-PKW, VW-PKW_InKlaerungKILX) 
              AND "Detailed Type" not in (V:ADV, T:Beauskunftung) 
-             AND status = Implemented 
-             AND "Due Date Concept legally approved" is EMPTY'''
+             AND status = Implemented'''
+
+print('Collecting JIRA issues ...')
 
 issues_in_project = jira.search_issues(
         jql_str=jql_str, 
@@ -25,8 +26,7 @@ issues_in_project = jira.search_issues(
         expand='changelog'
         )
 
-print(f'There are currently {len(issues_in_project)} issues for which the \
-                             Concept legally approved date needs to be updated.')
+print(f'Collected {len(issues_in_project)} issues for which status is implemented.')
 
 df = JiraDf(
         jira_client=jira, 
@@ -41,7 +41,10 @@ df['date'] = pd.to_datetime(df.date, dayfirst=True).copy()
 df.sort_values('date', ascending=False, inplace=True)
 df.drop_duplicates(subset=['id'], keep='first', inplace=True)
 df.loc[:, 'concept_legally_approved'] = df.date.map(lambda x: x + BDay(15))
-df.apply(lambda x: x['issue_object'].update(
+df['concept_legally_approved'] = df.concept_legally_approved.map(lambda x: x.strftime('%Y-%m-%d'))
+date_mismatch = df['concept_legally_approved'] != df['Due Date Concept legally approved']
+
+df.loc[date_mismatch,:].apply(lambda x: x['issue_object'].update(
         fields={'customfield_13713':x['concept_legally_approved']}, 
         notify=False
         ), axis=1)
