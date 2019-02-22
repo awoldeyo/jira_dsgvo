@@ -44,16 +44,43 @@ df.loc[:, 'concept_legally_approved'] = df.date.map(lambda x: x + BDay(15))
 df['concept_legally_approved'] = df.concept_legally_approved.map(lambda x: x.strftime('%Y-%m-%d'))
 date_mismatch = df['concept_legally_approved'] != df['Due Date Concept legally approved']
 
-df.loc[date_mismatch,:].apply(lambda x: x['issue_object'].update(
+issue_keys = ',\n'.join(df.loc[date_mismatch,'key'].tolist())
+commit = input(f"The Concept legally approved date for the following issues needs\
+               to be updated:\n\
+               {issue_keys} \nTo update date, enter y(es) or n(o): ")
+
+if commit == 'y':
+    df.loc[date_mismatch,:].apply(lambda x: x['issue_object'].update(
         fields={'customfield_13713':x['concept_legally_approved']}, 
         notify=False
         ), axis=1)
+    
+    print(f'Updated Concept legally approved date for \
+      {df.loc[date_mismatch,:].shape[0]} issues.')
 
-reportlink_24391 = "https://cocoa.volkswagen.de/sjira/sr/jira.issueviews:\
-searchrequest-excel-current-fields/24391/SearchRequest-24391.xls"
+    reportlink_24391 = "https://cocoa.volkswagen.de/sjira/sr/jira.issueviews:\
+    searchrequest-excel-current-fields/24391/SearchRequest-24391.xls"
+    
+    with requests.Session() as s:
+        excel = s.get(reportlink_24391, cookies=cookies)
+    
+    with open('Concept Legally approved.xls', mode='w') as f:
+        f.write(excel.text)
+    
+elif commit=='n':
+    print('No changes made!')
+else:
+    print('Did not understand input. No changes made.')
 
-with requests.Session() as s:
-    excel = s.get(reportlink_24391, cookies=cookies)
+# =============================================================================
+# Get reports from favourite filters
+# =============================================================================
+    
+favourite_filters = jira.favourite_filters()
 
-with open('Concept Legally approved.xls', mode='w') as f:
-    f.write(excel.text)
+for fav_filter in favourite_filters:
+    with requests.Session() as s:
+        reportlink = f'https://cocoa.volkswagen.de/sjira/sr/jira.issueviews:searchrequest-excel-current-fields/{fav_filter.id}/SearchRequest-{fav_filter.id}.xls'
+        excel = s.get(reportlink, cookies=cookies)
+    with open(f'{fav_filter.name}.xls', mode='w') as f:
+        f.write(excel.text)

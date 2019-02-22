@@ -143,7 +143,7 @@ def get_string(jira_object):
             Component: lambda x: x.name,
             Watchers: lambda x: x.watchCount,
             Votes: lambda x: x.votes,
-            Status: lambda x: x.statusCategory.name,
+            Status: lambda x: x.name,
             Project: lambda x: x.key,
             IssueType: lambda x: x.name, 
             PropertyHolder: lambda x: x.__dict__,

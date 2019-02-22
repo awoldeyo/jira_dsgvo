@@ -2,7 +2,7 @@ import pandas as pd
 from pandas.errors import OutOfBoundsDatetime
 
 from cocoa import Connection
-from jiradataframe import JIRADataframe
+from format_df import JiraDf
 
 
 def to_datetime(string):
@@ -76,8 +76,11 @@ issues_in_project = jira.search_issues(
 duedate = get_changelog(issues_in_project)
 duedate_dt = create_datetable(duedate)
 
-issues_df = JIRADataframe(jira, issues_in_project)
-issues_df = issues_df.df_front
+issues_df = JiraDf(issues=issues_in_project, 
+                   jira_client=jira, 
+                   frontendcolname=True, 
+                   stringvalues=True).df
+
 issues_df.columns = [c.title() if c =='status' else c for c in issues_df.columns]
 cols = ['id',
         'key',
@@ -94,6 +97,8 @@ cols = ['id',
         'Handover Date',
         'Dokumente vorhanden?'
        ]
+
+issues_df.dropna(axis=1, how='all', inplace=True)
 issues_df = issues_df.reindex(cols, axis=1)
 
 new_colname = ['id','JIRA ID', 'Bereich', 'Component/s', 'Detailed Type', 'Assignee',
