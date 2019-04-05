@@ -101,6 +101,7 @@ def to_dataframe(issues, changelog):
                 for item in his.items:
                     row = {}
                     row['id'] = i.id
+                    row['author'] = his.author
                     row['date'] = his.created
                     row['from'] = item.fromString
                     row['to'] = item.toString
