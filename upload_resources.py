@@ -163,3 +163,17 @@ template_cols = [
         'DAML_Error_message',
         'DC_Error_message',
         ]
+
+allNA_DC_cols = [
+        'Summary* DC', 
+        'Description* DC', 
+        'Assignee* DC', 
+        'Reporter* DC',
+        'Component* DC',  
+        'Priority DC',
+        'Comment',
+        'Detailed Type*', 
+        'Technical implementation needed*', 
+        'Labels',
+        'Status',
+]

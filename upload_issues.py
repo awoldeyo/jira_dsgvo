@@ -6,7 +6,9 @@ from jira.exceptions import JIRAError
 from openpyxl import load_workbook
 
 from cocoa import Connection
-from upload_resources import excelname_mapping, dc_cols, daml_cols, dtype, heatmap, heatmap_area, template_cols
+from upload_resources import (excelname_mapping, dc_cols, daml_cols, 
+                              dtype, heatmap, heatmap_area, template_cols, 
+                              allNA_DC_cols)
 
 
 class UploadIssues(object):
@@ -100,78 +102,66 @@ class UploadIssues(object):
                 )
         writer.save()
 
-    def createUploadDictDC(self):         
+    def createUploadDictDC(self):
+        self.DC_notAllNA = self.df.dropna(axis=0, 
+                                          how='all', 
+                                          subset=allNA_DC_cols).index
          # Determine which DC rows are valid 
          # (i.e. all mandatory columns are filled out)
-         self.valid_DC_rows = self.df.dropna(
-                 axis='index', 
-                 subset=self.mandatory_DC_cols
-                 ).index
+        self.valid_DC_rows = self.df.loc[self.DC_notAllNA, :].dropna(
+                axis='index',
+                how='any',
+                subset=self.mandatory_DC_cols
+                ).index
                  
-         # Determine DC that can be uploaded and create dictionary for upload 
-         condition_1 = (self.df.index.isin(self.valid_DC_rows)) # 1. Mandatory columns are all filled
-         condition_2 = (self.df['Linked Issue DC'].isna()) # 2. Issues have not been linked yet
-         dc_filter = condition_1 & condition_2
+        # Determine DC that can be uploaded and create dictionary for upload 
+        condition_1 = (self.df.index.isin(self.valid_DC_rows)) # 1. Mandatory columns are all filled
+        condition_2 = (self.df['Linked Issue DC'].isna()) # 2. Issues have not been linked yet
+        dc_filter = condition_1 & condition_2
          
          # Create upload dictionary
-         self.df.loc[dc_filter, 'DC dict'] = self.df[dc_filter].reindex(
-                 dc_cols, 
-                 axis=1).fillna('').apply(
-                         lambda x: df_to_issuedict(x, self.dc_blueprint, 'DC'), 
-                         axis=1)
+        self.df.loc[dc_filter, 'DC dict'] = self.df[dc_filter].reindex(
+                dc_cols, 
+                axis=1).fillna('').apply(
+                        lambda x: df_to_issuedict(x, self.dc_blueprint, 'DC'),
+                        axis=1)
          
          # Determine incomplete rows
-         condition_3 = self.df['Linked Issue'].notna() # Linked Issue, i.e. corresponding DAML issue exists
-         condition_4 = (dc_filter == False) # Not in dc_filter (i.e. mandatory field not filled and not linked yet)
-         incomplete_rows = self.df.loc[condition_3 & condition_4].index
+        condition_3 = self.df['Linked Issue'].notna() # Linked Issue, i.e. corresponding DAML issue exists
+        condition_4 = (dc_filter == False) # Not in dc_filter (i.e. mandatory field not filled and not linked yet)
+        condition_5 = self.df.index.isin(self.DC_notAllNA) # DCs are not all na
+        incomplete_rows = self.df.loc[condition_3 & condition_4 & condition_5].index
          
          # Add incomplete row(s) to existing incomplete dataframe
-         self.incomplete_df = pd.concat(
-                 (self.incomplete_df, self.df.loc[incomplete_rows, :]), 
-                 sort=True
-                 )
+        self.incomplete_df = pd.concat(
+                (self.incomplete_df, self.df.loc[incomplete_rows, :]), 
+                sort=True
+                )
          
-         # Drop incomplete row(s) from original dataframe
-         self.df.drop(labels=incomplete_rows, axis=0, inplace=True)
+        # Drop incomplete row(s) from original dataframe
+        self.df.drop(labels=incomplete_rows, axis=0, inplace=True)
          
-          # Reindex incomplete dataframe columns to match original template
-         self.incomplete_df = self.incomplete_df.reindex(
-                 labels=template_cols,
-                 axis=1
-                 )
+         # Reindex incomplete dataframe columns to match original template
+        self.incomplete_df = self.incomplete_df.reindex(
+                labels=template_cols,
+                axis=1
+                )
          
-         book = load_workbook('template/UpoadFile2_version_1.3.xlsm')
-         writer = ExcelWriter('output/Incomplete_data.xlsx', engine='openpyxl')
-         writer.book = book
-         writer.sheets = dict((ws.title, ws) for ws in book.worksheets)
-         self.incomplete_df.to_excel(
-                 excel_writer=writer,
-                 sheet_name='Upload',
-                 header=False,
-                 index=False,
-                 startrow=2
-                 )
-         writer.save()
+        book = load_workbook('template/UpoadFile2_version_1.3.xlsm')
+        writer = ExcelWriter('output/Incomplete_data.xlsx', engine='openpyxl')
+        writer.book = book
+        writer.sheets = dict((ws.title, ws) for ws in book.worksheets)
+        self.incomplete_df.to_excel(
+                excel_writer=writer,
+                sheet_name='Upload',
+                header=False,
+                index=False,
+                startrow=2
+                )
+        writer.save()
 
 
     def postDAML(self):
-        
-# =============================================================================
-#         # Create new columns for successfull upload (boolean) and error messges
-#         self.df['DAML_upload_success'] = False
-#         self.df['DAML_Error_message'] = None
-#         
-#         # Define column arguments for processing upload
-#         col_args = ('DAML dict',
-#                     'DAML_Error_message', 
-#                     'Linked Issue', 
-#                     'DAML_upload_success', 
-#                     )
-#         
-#         # Post DAML issues
-#         self.df = self.df.apply(post_issues, args=col_args, axis=1)
-# =============================================================================
-        
         self.df['results'] = self.df['DAML dict'].map(post_issues)
         results = self.df.apply(lambda x: x['results'], 
                                 axis=1, 
@@ -223,27 +213,9 @@ class UploadIssues(object):
         writer.save()
     
     def postDC(self):
-        
-# =============================================================================
-#         # Create new columns for successfull upload (boolean), error messges
-#         # and DC issue Link
-#         self.df['DC_upload_success'] = False
-#         self.df['DC_Error_message'] = None
-#         self.df['Linked Issue DC'] = None
-#         
-#         # Define column arguments for processing upload
-#         col_args = ('DC dict',
-#                     'DC_Error_message', 
-#                     'Linked Issue DC', 
-#                     'DC_upload_success',
-#                     )
-#         
-#         # Post DC issues
-#         self.df = self.df.apply(post_issues, args=col_args, axis=1)
-# =============================================================================
-        
-        self.df['results'] = self.df['DC dict'].map(post_issues)
-        results = self.df.apply(lambda x: x['results'], 
+        DC_filter = self.df['DC dict'].notna()
+        self.df.loc[DC_filter, 'results'] = self.df.loc[DC_filter, 'DC dict'].map(post_issues)
+        results = self.df.loc[DC_filter,:].apply(lambda x: x['results'], 
                                 axis=1, 
                                 result_type='expand').copy()
         results.columns = ['Linked Issue DC', 
@@ -302,7 +274,37 @@ class UploadIssues(object):
                 startrow=2
                 )
         writer.save()
-              
+
+    def addCommentDAML(self):
+        comment_filter = self.df['Comment DAML'].notna() & self.df['Linked Issue'].notna()
+        _ = self.df.loc[comment_filter, :].apply(
+                lambda x: jira.add_comment(issue=x['Linked Issue'], body=x['Comment DAML']), 
+                axis=1)
+    
+    def addCommentDC(self):
+        comment_filter = self.df['Comment'].notna() & self.df['Linked Issue DC'].notna()
+        _ = self.df.loc[comment_filter, :].apply(
+        lambda x: jira.add_comment(issue=x['Linked Issue DC'], body=x['Comment']), 
+        axis=1)
+    
+    def changeStatusDAML(self):
+        status_filter = self.df['Status DAML'].notna() & self.df['Linked Issue'].notna()
+        self.df.loc[status_filter, 'DAML object'] = self.df.loc[status_filter, 'Linked Issue'].map(lambda x: get_issues(x))
+        self.df.loc[status_filter, 'Status DAML'] = self.df.loc[status_filter, 'Status DAML'].str.title()
+        _ = self.df.loc[status_filter].apply(
+                lambda x: change_daml_status(x), 
+                axis=1)
+    
+    def changeStatusDC(self):
+        status_filter = self.df['Status'].notna() & self.df['Linked Issue DC'].notna()
+        self.df.loc[status_filter, 'DC object'] = self.df.loc[status_filter, 'Linked Issue DC'].map(lambda x: get_issues(x))
+        self.df.loc[status_filter, 'Status'] = self.df.loc[status_filter, 'Status'].str.title()
+        _ = self.df.loc[status_filter].apply(
+                lambda x: change_dc_status(x), 
+                axis=1)
+    
+    def linkDAML_DC(self):
+        pass
 
 def from_blueprint(blueprint, field, fieldvalue):
     '''Looks up and returns required data format'''
@@ -344,26 +346,78 @@ def post_issues(x):
         obj_success, obj_key, obj_error = False, None, j.text
     finally:
         return obj_key, obj_success, obj_error
-# =============================================================================
-#     try:
-#         obj = jira.create_issue(x[dict_col])
-#         x[link] = obj.key
-#         x[success] = True
-#     except JIRAError as j:
-#         x[error_message] = j.text
-#     finally:
-#         return x
-# =============================================================================
+    
+def get_issues(key):
+    try:
+        obj = jira.search_issues(jql_str=f'key={key}', maxResults=False)
+        obj = obj[0]
+        return obj
+    except JIRAError as j:
+        print(j)
+        return None
+    except KeyError as k:
+        print(f'Could not find issue for {key}.')
+        return None
+    
+def change_daml_status(x):
+    if x['Status DAML'] == 'New':
+        pass
+    elif x['Status DAML'] == 'In Assessment':
+        jira.transition_issue(x['DAML object'], transition='11') # 1. Approve
+        
+    elif x['Status DAML'] == 'In Progress':
+        jira.transition_issue(x['DAML object'], transition='11') # 1. Aprove
+        jira.transition_issue(x['DAML object'], transition='21') # 2. Implement
+        
+    elif x['Status DAML'] == 'Done':
+        jira.transition_issue(x['DAML object'], transition='11') # 1. Aprove
+        jira.transition_issue(x['DAML object'], transition='21') # 2. Implement
+        jira.transition_issue(x['DAML object'], transition='41') # 3. Aprove Concept
+        
+    elif x['Status DAML'] == 'Rejected':
+        jira.transition_issue(x['DAML object'], transition='11') # 1. Aprove
+        jira.transition_issue(x['DAML object'], transition='21') # 2. Implement
+        jira.transition_issue(x['DAML object'], transition='31') # 2. Implement
+        
+def change_dc_status(x):
+    if x['Status'] == 'Draft':
+        pass
+    elif x['Status'] == 'Order Approval':
+        jira.transition_issue(x['DC object'], transition='21') # 1. Approve
+        
+    elif x['Status'] == 'Implemented':
+        jira.transition_issue(x['DC object'], transition='21') # 1. Aprove
+        jira.transition_issue(x['DC object'], transition='11') # 2. Implement
+        
+    elif x['Status'] == 'Resolved':
+        jira.transition_issue(x['DC object'], transition='21') # 1. Aprove
+        jira.transition_issue(x['DC object'], transition='11') # 2. Implement
+        jira.transition_issue(x['DC object'], transition='141') # 3. Aprove Concept
+        jira.transition_issue(x['DC object'], transition='101') # 4. Resolve
+        
+    elif x['Status'] == 'Closed':
+        jira.transition_issue(x['DC object'], transition='21') # 1. Aprove
+        jira.transition_issue(x['DC object'], transition='11') # 2. Implement
+        jira.transition_issue(x['DC object'], transition='141') # 3. Aprove Concept
+        jira.transition_issue(x['DC object'], transition='101') # 4. Resolve
+        jira.transition_issue(x['DC object'], transition='121') # 5. Close
 
 
 jira = Connection(True).jira
 #filename = '/Users/lilitkhurshudyan/Documents/12_Projects/VW/JIRA/__uploads__/test_upload/test.xlsm'
 filename = '/Users/lilitkhurshudyan/Documents/12_Projects/VW/JIRA/__uploads__/test_upload/test_2.xlsm'
 up = UploadIssues(filename)
+
 up.createUploadDictDAML()
 up.postDAML()
+up.addCommentDAML() 
+up.changeStatusDAML()
+
+
 up.createUploadDictDC()
 up.postDC()
+up.addCommentDC() 
+up.changeStatusDC()
 
 # =============================================================================
 # parser = OptionParser()
