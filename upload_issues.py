@@ -448,7 +448,7 @@ try:
     jira = Connection(stored_cookie=True).jira
     if not isinstance(jira, JIRA):
         raise ValueError
-except ValueError:
+except (ValueError, FileNotFoundError):
     # If cookie expired request username and password
     jira = Connection().jira
     
