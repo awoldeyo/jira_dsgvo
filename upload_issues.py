@@ -451,13 +451,11 @@ try:
 except (ValueError, FileNotFoundError):
     # If cookie expired request username and password
     jira = Connection().jira
-    
-#filename = '/Users/lilitkhurshudyan/Documents/12_Projects/VW/JIRA/__uploads__/test_upload/test.xlsm'
-#filename = '/Users/lilitkhurshudyan/Documents/12_Projects/VW/JIRA/__uploads__/test_upload/test_2.xlsm'
+
 
 filename = filedialog.askopenfile()
 
-up = UploadIssues(filename)
+up = UploadIssues(filename.name)
 
 up.createUploadDictDAML()
 up.postDAML()
