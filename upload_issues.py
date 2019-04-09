@@ -3,7 +3,9 @@ from optparse import OptionParser
 import pandas as pd
 from pandas import ExcelWriter
 from jira.exceptions import JIRAError
+from jira.client import JIRA
 from openpyxl import load_workbook
+from tkinter import filedialog
 
 from cocoa import Connection
 from upload_resources import (excelname_mapping, dc_cols, daml_cols, 
@@ -29,6 +31,10 @@ class UploadIssues(object):
         self.prepareFile()
     
     def prepareFile(self):
+        '''Method to preprocess and create certain certain columns in Excel 
+           upload document. This avoids errors when uploading issues to JIRA.
+        '''
+        
         # Format date to string
         self.df['Due-Date implemented'] = self.df['Due-Date implemented'].map(
                 lambda x: x.strftime('%Y-%m-%d') if pd.notna(x) else ''
@@ -60,6 +66,12 @@ class UploadIssues(object):
 
         
     def createUploadDictDAML(self):
+        '''Method to create dictionaries from Excel entries. Dictonaries can
+           later be uploaded to DAML project. Entries for which mandatory 
+           columns are not filled are considered as incomplete and will be 
+           exported to Incomplete_data.xlsx.
+        '''
+        
         # Determine which DAML rows are valid 
         # (i.e. all mandatory columns are filled out)
         self.valid_DAML_rows = self.df.dropna(
@@ -103,6 +115,11 @@ class UploadIssues(object):
         writer.save()
 
     def createUploadDictDC(self):
+        '''Method to create dictionaries from Excel entries. Dictonaries can
+           later be uploaded to DC project. Entries for which mandatory 
+           columns are not filled are considered as incomplete and will be 
+           exported to Incomplete_data.xlsx.
+        '''
         self.DC_notAllNA = self.df.dropna(axis=0, 
                                           how='all', 
                                           subset=allNA_DC_cols).index
@@ -162,6 +179,9 @@ class UploadIssues(object):
 
 
     def postDAML(self):
+        '''Method to upload DAML dictionaries as issues to JIRA. Issues not 
+           successfully uploaded will be exported to Incorrect_data.xlsx.
+        '''
         self.df['results'] = self.df['DAML dict'].map(post_issues)
         results = self.df.apply(lambda x: x['results'], 
                                 axis=1, 
@@ -213,6 +233,9 @@ class UploadIssues(object):
         writer.save()
     
     def postDC(self):
+        '''Method to upload DC dictionaries as issues to JIRA. Issues not 
+           successfully uploaded will be exported to Incorrect_data.xlsx.
+        '''        
         DC_filter = self.df['DC dict'].notna()
         self.df.loc[DC_filter, 'results'] = self.df.loc[DC_filter, 'DC dict'].map(post_issues)
         results = self.df.loc[DC_filter,:].apply(lambda x: x['results'], 
@@ -276,18 +299,26 @@ class UploadIssues(object):
         writer.save()
 
     def addCommentDAML(self):
+        '''Method to add values in column 'Comment DAML' as comment
+           to issues specified in column 'Linked Issue'.
+        '''
         comment_filter = self.df['Comment DAML'].notna() & self.df['Linked Issue'].notna()
         _ = self.df.loc[comment_filter, :].apply(
                 lambda x: jira.add_comment(issue=x['Linked Issue'], body=x['Comment DAML']), 
                 axis=1)
     
     def addCommentDC(self):
+        '''Method to add values in column 'Comment DC' as comment
+           to issues specified in column 'Linked Issue DC'.
+        '''
         comment_filter = self.df['Comment'].notna() & self.df['Linked Issue DC'].notna()
         _ = self.df.loc[comment_filter, :].apply(
         lambda x: jira.add_comment(issue=x['Linked Issue DC'], body=x['Comment']), 
         axis=1)
     
     def changeStatusDAML(self):
+        '''Method to change DAML issues' status to value in column 'Status DAML'.
+        '''
         status_filter = self.df['Status DAML'].notna() & self.df['Linked Issue'].notna()
         self.df.loc[status_filter, 'DAML object'] = self.df.loc[status_filter, 'Linked Issue'].map(lambda x: get_issues(x))
         self.df.loc[status_filter, 'Status DAML'] = self.df.loc[status_filter, 'Status DAML'].str.title()
@@ -296,6 +327,8 @@ class UploadIssues(object):
                 axis=1)
     
     def changeStatusDC(self):
+        '''Method to change DC issues' status to value in column 'Status'.
+        '''
         status_filter = self.df['Status'].notna() & self.df['Linked Issue DC'].notna()
         self.df.loc[status_filter, 'DC object'] = self.df.loc[status_filter, 'Linked Issue DC'].map(lambda x: get_issues(x))
         self.df.loc[status_filter, 'Status'] = self.df.loc[status_filter, 'Status'].str.title()
@@ -304,7 +337,13 @@ class UploadIssues(object):
                 axis=1)
     
     def linkDAML_DC(self):
-        pass
+        '''Method to link DC and DAML issues which both are listed in one row and
+           were uploaded sucessfully.
+        '''
+        link_filter = self.df['Linked Issue'].notna() & self.df['Linked Issue DC'].notna()
+        _ = self.df.loc[link_filter, :].apply(
+                lambda x: jira.create_issue_link(type='Relates', inwardIssue=x['Linked Issue'], outwardIssue=x['Linked Issue DC']), 
+                axis=1)
 
 def from_blueprint(blueprint, field, fieldvalue):
     '''Looks up and returns required data format'''
@@ -403,9 +442,21 @@ def change_dc_status(x):
         jira.transition_issue(x['DC object'], transition='121') # 5. Close
 
 
-jira = Connection(True).jira
+# Authentication:
+try:
+    # First try to connect with existing cookie
+    jira = Connection(stored_cookie=True).jira
+    if not isinstance(jira, JIRA):
+        raise ValueError
+except ValueError:
+    # If cookie expired request username and password
+    jira = Connection().jira
+    
 #filename = '/Users/lilitkhurshudyan/Documents/12_Projects/VW/JIRA/__uploads__/test_upload/test.xlsm'
-filename = '/Users/lilitkhurshudyan/Documents/12_Projects/VW/JIRA/__uploads__/test_upload/test_2.xlsm'
+#filename = '/Users/lilitkhurshudyan/Documents/12_Projects/VW/JIRA/__uploads__/test_upload/test_2.xlsm'
+
+filename = filedialog.askopenfile()
+
 up = UploadIssues(filename)
 
 up.createUploadDictDAML()
@@ -418,6 +469,8 @@ up.createUploadDictDC()
 up.postDC()
 up.addCommentDC() 
 up.changeStatusDC()
+
+up.linkDAML_DC()
 
 # =============================================================================
 # parser = OptionParser()
