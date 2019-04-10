@@ -7,8 +7,10 @@ from json import JSONDecodeError
 
 class Connection(object):
     '''Instantiate a JIRA client object to www.cocoa.volkswagen.de'''
-    def __init__(self, stored_cookie=False):
+    def __init__(self, stored_cookie=False, async_=False, async_workers=8):
         self.url = 'https://cocoa.volkswagen.de/sjira/'
+        self.async_ = async_
+        self.async_workers = async_workers
         if stored_cookie:
             with open('cookie.pickle', 'rb') as f:
                 self.cookies = pickle.load(f)
@@ -39,7 +41,9 @@ class Connection(object):
         '''Creates JIRA client object or returns None if failed.'''
         try:
             jira_options={'server': self.url, 'cookies':self.cookies}
-            jira=JIRA(options=jira_options, async_=True, async_workers=8)
+            jira=JIRA(options=jira_options, 
+                      async_=self.async_, 
+                      async_workers=self.async_workers)
             print(f'You are logged in as {jira.current_user()}!')
             return jira
         except JSONDecodeError as j:
