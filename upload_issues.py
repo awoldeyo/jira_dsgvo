@@ -9,8 +9,8 @@ from tkinter import filedialog
 
 from cocoa import Connection
 from upload_resources import (excelname_mapping, dc_cols, daml_cols, 
-                              dtype, heatmap, heatmap_area, template_cols, 
-                              allNA_DC_cols)
+                              mandatory_daml_cols, dtype, heatmap, 
+                              heatmap_area, template_cols, allNA_DC_cols)
 
 
 class UploadIssues(object):
@@ -24,7 +24,7 @@ class UploadIssues(object):
     def __init__(self, filename):
         self.daml_blueprint = pd.read_pickle('./project_blueprints/daml_blueprint.pickle')
         self.dc_blueprint = pd.read_pickle('./project_blueprints/dc_blueprint.pickle')
-        self.mandatory_DAML_cols = [c for c in daml_cols if "*" in c]
+        self.mandatory_DAML_cols = mandatory_daml_cols
         self.mandatory_DC_cols = [c for c in dc_cols if "*" in c]
         self.filename = filename
         self.df = pd.read_excel(self.filename, skiprows=1, dtype=dtype)
@@ -237,6 +237,9 @@ class UploadIssues(object):
            successfully uploaded will be exported to Incorrect_data.xlsx.
         '''        
         DC_filter = self.df['DC dict'].notna()
+        
+        assert self.df[DC_filter].shape[0] >= 1
+        
         self.df.loc[DC_filter, 'results'] = self.df.loc[DC_filter, 'DC dict'].map(post_issues)
         results = self.df.loc[DC_filter,:].apply(lambda x: x['results'], 
                                 axis=1, 
@@ -321,7 +324,7 @@ class UploadIssues(object):
         '''
         status_filter = self.df['Status DAML'].notna() & self.df['Linked Issue'].notna()
         self.df.loc[status_filter, 'DAML object'] = self.df.loc[status_filter, 'Linked Issue'].map(lambda x: get_issues(x))
-        self.df.loc[status_filter, 'Status DAML'] = self.df.loc[status_filter, 'Status DAML'].str.title()
+        self.df.loc[status_filter, 'Status DAML'] = self.df.loc[status_filter, 'Status DAML'].map(lambda x: x.title())
         _ = self.df.loc[status_filter].apply(
                 lambda x: change_daml_status(x), 
                 axis=1)
@@ -331,7 +334,7 @@ class UploadIssues(object):
         '''
         status_filter = self.df['Status'].notna() & self.df['Linked Issue DC'].notna()
         self.df.loc[status_filter, 'DC object'] = self.df.loc[status_filter, 'Linked Issue DC'].map(lambda x: get_issues(x))
-        self.df.loc[status_filter, 'Status'] = self.df.loc[status_filter, 'Status'].str.title()
+        self.df.loc[status_filter, 'Status'] = self.df.loc[status_filter, 'Status'].map(lambda x: x.title())
         _ = self.df.loc[status_filter].apply(
                 lambda x: change_dc_status(x), 
                 axis=1)
@@ -445,30 +448,34 @@ def change_dc_status(x):
 # Authentication:
 try:
     # First try to connect with existing cookie
-    jira = Connection(stored_cookie=True).jira
+    jira = Connection(stored_cookie=True, 
+                      async_=False, 
+                      async_workers=None).jira
     if not isinstance(jira, JIRA):
         raise ValueError
 except (ValueError, FileNotFoundError):
     # If cookie expired request username and password
     jira = Connection().jira
 
+if __name__ == '__main__':
+    filename = filedialog.askopenfile()
+    up = UploadIssues(filename.name)
+    
+    up.createUploadDictDAML()
+    up.postDAML()
+    up.addCommentDAML() 
+    up.changeStatusDAML()
+     
+     
+    up.createUploadDictDC() 
+    try:
+        up.postDC()
+    except AssertionError as a:
+        print('There are no DC issues for upload.')    
+    up.addCommentDC()
+    up.changeStatusDC()
+    up.linkDAML_DC()
 
-filename = filedialog.askopenfile()
-
-up = UploadIssues(filename.name)
-
-up.createUploadDictDAML()
-up.postDAML()
-up.addCommentDAML() 
-up.changeStatusDAML()
-
-
-up.createUploadDictDC()
-up.postDC()
-up.addCommentDC() 
-up.changeStatusDC()
-
-up.linkDAML_DC()
 
 # =============================================================================
 # parser = OptionParser()

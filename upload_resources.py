@@ -77,6 +77,22 @@ daml_cols = [
         'Priority DAML',
         ]
 
+mandatory_daml_cols = [
+        'Affected IT-System*', 
+        'Business Transaktion*', 
+        'Category', 
+        'Summary* DAML', 
+        'Type*', 
+        'Project*',
+        'Market', 
+        'Brand', 
+        'Description* DAML', 
+        'Assignee* DAML', 
+        'Reporter* DAML', 
+        'Component* DAML', 
+        'Priority DAML',
+        ]
+
 dtype = {'Due-Date Implemented': 'datetime64[ns]'}
 
 heatmap = {
