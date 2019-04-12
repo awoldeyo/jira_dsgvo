@@ -77,6 +77,23 @@ daml_cols = [
         'Priority DAML',
         ]
 
+mandatory_dc_cols = [
+        'Affected IT-System*', 
+        'Business Transaktion*', 
+        'Type*', 
+        'Project*', 
+        'Brand', 
+        'Summary* DC',
+        'Description* DC', 
+        'Assignee* DC', 
+        'Reporter* DC', 
+        'Component* DC',
+        'Priority DC', 
+        'Due-Date implemented',
+        'Detailed Type*',
+        'Technical implementation needed*',
+        ]
+
 mandatory_daml_cols = [
         'Affected IT-System*', 
         'Business Transaktion*', 

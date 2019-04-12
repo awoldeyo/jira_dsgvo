@@ -1,5 +1,3 @@
-from optparse import OptionParser
-
 import pandas as pd
 from pandas import ExcelWriter
 from jira.exceptions import JIRAError
@@ -9,8 +7,9 @@ from tkinter import filedialog
 
 from cocoa import Connection
 from upload_resources import (excelname_mapping, dc_cols, daml_cols, 
-                              mandatory_daml_cols, dtype, heatmap, 
-                              heatmap_area, template_cols, allNA_DC_cols)
+                              mandatory_daml_cols, mandatory_dc_cols, dtype, 
+                              heatmap, heatmap_area, template_cols, 
+                              allNA_DC_cols)
 
 
 class UploadIssues(object):
@@ -25,7 +24,7 @@ class UploadIssues(object):
         self.daml_blueprint = pd.read_pickle('./project_blueprints/daml_blueprint.pickle')
         self.dc_blueprint = pd.read_pickle('./project_blueprints/dc_blueprint.pickle')
         self.mandatory_DAML_cols = mandatory_daml_cols
-        self.mandatory_DC_cols = [c for c in dc_cols if "*" in c]
+        self.mandatory_DC_cols = mandatory_dc_cols
         self.filename = filename
         self.df = pd.read_excel(self.filename, skiprows=1, dtype=dtype)
         self.prepareFile()
@@ -35,9 +34,15 @@ class UploadIssues(object):
            upload document. This avoids errors when uploading issues to JIRA.
         '''
         
+        # Drop Error messages columns if upload file originates from output folder
+        self.df.drop(labels=['DAML_Error_message', 'DC_Error_message'], 
+                     axis=1, 
+                     inplace = True, 
+                     errors='ignore')
+        
         # Format date to string
         self.df['Due-Date implemented'] = self.df['Due-Date implemented'].map(
-                lambda x: x.strftime('%Y-%m-%d') if pd.notna(x) else ''
+                lambda x: x.strftime('%Y-%m-%d') if pd.notna(x) else x
                 )
         
         # Fill N/A with empty string for optional columns
@@ -443,6 +448,8 @@ def change_dc_status(x):
         jira.transition_issue(x['DC object'], transition='141') # 3. Aprove Concept
         jira.transition_issue(x['DC object'], transition='101') # 4. Resolve
         jira.transition_issue(x['DC object'], transition='121') # 5. Close
+    else:
+        pass
 
 
 # Authentication:
@@ -457,29 +464,28 @@ except (ValueError, FileNotFoundError):
     # If cookie expired request username and password
     jira = Connection().jira
 
+
 if __name__ == '__main__':
+
+    # Select upload file from disk
     filename = filedialog.askopenfile()
     up = UploadIssues(filename.name)
     
+    # Create, post, comment DAML issues and change status
     up.createUploadDictDAML()
     up.postDAML()
     up.addCommentDAML() 
     up.changeStatusDAML()
      
-     
+    # Create, post, comment DC issues and change status
     up.createUploadDictDC() 
     try:
         up.postDC()
     except AssertionError as a:
         print('There are no DC issues for upload.')    
+    
     up.addCommentDC()
     up.changeStatusDC()
+    
+    # Connect created DAML & DC issues
     up.linkDAML_DC()
-
-
-# =============================================================================
-# parser = OptionParser()
-# args = parser.add_option("-c", action="store_true", dest="stored", help="Use stored cookie to authenticate.")
-# (options, args) = parser.parse_args()
-# jira = Connection(stored_cookie=options.stored).jira
-# =============================================================================
