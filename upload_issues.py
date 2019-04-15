@@ -517,20 +517,21 @@ if __name__ == '__main__':
     up = UploadIssues(filename.name)
     
     # Create, post, comment DAML issues and change status
-    up.createUploadDictDAML()
-    up.postDAML()
-    up.addCommentDAML() 
-    up.changeStatusDAML()
-     
-    # Create, post, comment DC issues and change status
-    up.createUploadDictDC() 
     try:
-        up.postDC()
+        up.createUploadDictDAML()
+        up.postDAML()
+        up.addCommentDAML() 
+        up.changeStatusDAML()
     except AssertionError as a:
-        print('There are no DC issues for upload.')    
+            print('There are no DAML issues for upload.')
+     
+    # Create, post, comment DC issues, change status and link to DAML issues
+    try:
+        up.createUploadDictDC()
+        up.postDC()
+        up.addCommentDC()
+        up.changeStatusDC()
+        up.linkDAML_DC()
+    except AssertionError as a:
+        print('There are no DC issues for upload.')
     
-    up.addCommentDC()
-    up.changeStatusDC()
-    
-    # Connect created DAML & DC issues
-    up.linkDAML_DC()
