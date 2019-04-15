@@ -42,8 +42,7 @@ class UploadIssues(object):
         
         # Format date to string
         self.df['Due-Date implemented'] = self.df['Due-Date implemented'].map(
-                lambda x: x.strftime('%Y-%m-%d') if pd.notna(x) else x
-                )
+                lambda x: format_date_column(x))
         
         # Fill N/A with empty string for optional columns
         optional_cols = ['Sub Department', 
@@ -55,6 +54,15 @@ class UploadIssues(object):
         
         # Cleanup data (remove trailing whitespace ...)
         self.df = self.df.applymap(lambda x: x.strip() if isinstance(x, str) else x)
+        try:
+            self.df['Summary* DAML'] = self.df['Summary* DAML'].str.replace('\n', ' ')
+        except AttributeError:
+            pass
+
+        try:
+            self.df['Summary* DC'] = self.df['Summary* DC'].str.replace('\n', ' ')
+        except:
+            pass
         
         # Create Heat-Map and Areas of activity Heatmap columns
         self.df['Heat-Map'] = self.df['Detailed Type*'].map(
@@ -76,6 +84,7 @@ class UploadIssues(object):
            columns are not filled are considered as incomplete and will be 
            exported to Incomplete_data.xlsx.
         '''
+        assert self.df['Linked Issue'].hasnans
         
         # Determine which DAML rows are valid 
         # (i.e. all mandatory columns are filled out)
@@ -106,7 +115,9 @@ class UploadIssues(object):
         self.df.drop(labels=incomplete_rows, axis=0, inplace=True)
         
         # Store incorrect dataframe in new Upload template
-        book = load_workbook('template/UpoadFile2_version_1.3.xlsm')
+        book = load_workbook('template/UpoadFile2_version_1.3.xlsm', 
+                             data_only=True
+                             )
         writer = ExcelWriter('output/Incomplete_data.xlsx', engine='openpyxl')
         writer.book = book
         writer.sheets = dict((ws.title, ws) for ws in book.worksheets)
@@ -154,11 +165,14 @@ class UploadIssues(object):
         condition_5 = self.df.index.isin(self.DC_notAllNA) # DCs are not all na
         incomplete_rows = self.df.loc[condition_3 & condition_4 & condition_5].index
          
-         # Add incomplete row(s) to existing incomplete dataframe
-        self.incomplete_df = pd.concat(
+        # Add incomplete row(s) to existing incomplete dataframe or create new
+        try:
+            self.incomplete_df = pd.concat(
                 (self.incomplete_df, self.df.loc[incomplete_rows, :]), 
                 sort=True
                 )
+        except AttributeError:
+             self.incomplete_df = self.df.loc[incomplete_rows, :]
          
         # Drop incomplete row(s) from original dataframe
         self.df.drop(labels=incomplete_rows, axis=0, inplace=True)
@@ -169,7 +183,9 @@ class UploadIssues(object):
                 axis=1
                 )
          
-        book = load_workbook('template/UpoadFile2_version_1.3.xlsm')
+        book = load_workbook('template/UpoadFile2_version_1.3.xlsm', 
+                             data_only=True
+                             )
         writer = ExcelWriter('output/Incomplete_data.xlsx', engine='openpyxl')
         writer.book = book
         writer.sheets = dict((ws.title, ws) for ws in book.worksheets)
@@ -187,6 +203,7 @@ class UploadIssues(object):
         '''Method to upload DAML dictionaries as issues to JIRA. Issues not 
            successfully uploaded will be exported to Incorrect_data.xlsx.
         '''
+        
         self.df['results'] = self.df['DAML dict'].map(post_issues)
         results = self.df.apply(lambda x: x['results'], 
                                 axis=1, 
@@ -224,7 +241,9 @@ class UploadIssues(object):
                                 )
         
         # Store incorrect dataframe in new Upload template
-        book = load_workbook('template/UpoadFile2_version_1.3.xlsm')
+        book = load_workbook('template/UpoadFile2_version_1.3.xlsm', 
+                             data_only=True
+                             )
         writer = ExcelWriter('output/Incorrect_data.xlsx', engine='openpyxl')
         writer.book = book
         writer.sheets = dict((ws.title, ws) for ws in book.worksheets)
@@ -245,6 +264,7 @@ class UploadIssues(object):
         
         assert self.df[DC_filter].shape[0] >= 1
         
+        self.df['results'] = None
         self.df.loc[DC_filter, 'results'] = self.df.loc[DC_filter, 'DC dict'].map(post_issues)
         results = self.df.loc[DC_filter,:].apply(lambda x: x['results'], 
                                 axis=1, 
@@ -262,14 +282,17 @@ class UploadIssues(object):
                             axis=1).drop(
                                     labels=['results'], axis=1
                                     )
-        
+                
         # Add not successfully uploaded DC issues to incorrect dataframe
         self.incorrect_df_DC = self.df.loc[self.df.DC_upload_success==False,:]
         if self.incorrect_df_DC.shape[0] >=1:
-            self.incorrect_df = pd.concat(
-                    (self.incorrect_df, self.incorrect_df_DC),
-                    sort=True,
-                    )
+            try:
+                self.incorrect_df = pd.concat(
+                        (self.incorrect_df, self.incorrect_df_DC),
+                        sort=True,
+                        )
+            except AttributeError:
+                self.incorrect_df = self.incorrect_df_DC
         
             # Drop incorrect rows from original dataframe
             self.df.drop(
@@ -288,12 +311,23 @@ class UploadIssues(object):
         
         # Adjust incorrect dataframe column to template column
         incorrect_cols = template_cols
-        self.incorrect_df = self.incorrect_df.reindex(labels=incorrect_cols,
-                                                      axis=1,
-                                                      )
-        
+        try:
+            self.incorrect_df = self.incorrect_df.reindex(
+                    labels=incorrect_cols,
+                    axis=1,
+                    )
+        except AttributeError:
+            self.incorrect_df = self.incorrect_df_DC
+            self.incorrect_df = self.incorrect_df.reindex(
+                    labels=incorrect_cols,
+                    axis=1,
+                    )
+            
+
         # Store incorrect dataframe in new Upload template
-        book = load_workbook('template/UpoadFile2_version_1.3.xlsm')
+        book = load_workbook('template/UpoadFile2_version_1.3.xlsm', 
+                             data_only=True
+                             )
         writer = ExcelWriter('output/Incorrect_data.xlsx', engine='openpyxl')
         writer.book = book
         writer.sheets = dict((ws.title, ws) for ws in book.worksheets)
@@ -349,9 +383,13 @@ class UploadIssues(object):
            were uploaded sucessfully.
         '''
         link_filter = self.df['Linked Issue'].notna() & self.df['Linked Issue DC'].notna()
-        _ = self.df.loc[link_filter, :].apply(
-                lambda x: jira.create_issue_link(type='Relates', inwardIssue=x['Linked Issue'], outwardIssue=x['Linked Issue DC']), 
-                axis=1)
+        
+        try:
+            _ = self.df.loc[link_filter, :].apply(
+                    lambda x: jira.create_issue_link(type='Relates', inwardIssue=x['Linked Issue'], outwardIssue=x['Linked Issue DC']), 
+                    axis=1)
+        except JIRAError as j:
+            print('Could not linke DC and DAML issues, since some of the DAML issues do not exist.')
 
 def from_blueprint(blueprint, field, fieldvalue):
     '''Looks up and returns required data format'''
@@ -377,12 +415,17 @@ def df_to_issuedict(item, blueprint, project):
     if project == 'DAML':
         issue_dict['project'] = {'id': '11605'}
         issue_dict['issuetype'] = {'name': 'Defect'}
-        #issue_dict['labels'] = ['VW-PKW'] # uncomment after deployment
-        issue_dict['labels'] = ['Testing'] # comment out after deployment
+        issue_dict['labels'] = ['VW-PKW']
     elif project == 'DC':
         issue_dict['project'] = {'id': '12302'}
         issue_dict['issuetype'] = {'name': 'Task'}
     return issue_dict
+
+def format_date_column(x):
+    try:
+        return x.strftime('%Y-%m-%d')
+    except (AttributeError, ValueError):
+        return x
 
 def post_issues(x):
     '''Posts Jira issues and returns True/False and Object Key/Error text'''
@@ -425,6 +468,8 @@ def change_daml_status(x):
         jira.transition_issue(x['DAML object'], transition='11') # 1. Aprove
         jira.transition_issue(x['DAML object'], transition='21') # 2. Implement
         jira.transition_issue(x['DAML object'], transition='31') # 2. Implement
+    else:
+        pass
         
 def change_dc_status(x):
     if x['Status'] == 'Draft':

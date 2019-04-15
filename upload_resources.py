@@ -153,11 +153,11 @@ heatmap_area = {
         'T:Loggingkonzept': 'Loggingkonzept',
         'T:Rollen-Rechtekonzept': 'Rollen-Rechtekonzept',
         'T:Testdaten': 'Testdaten',
-        'T:DatenfelderInaktivierung': 'Datenfelder Inaktivierung',
+        'T:DatenfelderInaktivierung': 'DatenfelderInaktivierung',
         'T:Mandantenfähigkeit': 'Mandantenfähigkeit',
         'T:Verschlüsselung': 'Verschlüsselung',
         'P:Privacybydesign&default': 'Privacy by design & privacy by default',
-        'P:Freitextfeld': '',
+        'P:Freitextfeld': 'Einschränkung',
         }
 
 template_cols = [

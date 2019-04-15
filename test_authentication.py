@@ -3,7 +3,7 @@ import unittest
 from upload_issues import UploadIssues
 from cocoa import Connection
 
-@unittest.skip("Skipping TestClass_1")
+#@unittest.skip("Skipping TestClass_1")
 class TestClass_1(unittest.TestCase):
     
     @classmethod
@@ -39,15 +39,22 @@ class TestClass_2(unittest.TestCase):
     def setUpClass(cls):
         testfile = '/Users/lilitkhurshudyan/Documents/12_Projects/VW/JIRA/__uploads__/test_upload/DAML_DC_all_complete.xlsm'
         cls.up = UploadIssues(filename=testfile)
-        cls.up.createUploadDictDAML()
-        cls.up.postDAML()
-        cls.up.addCommentDAML() 
-        cls.up.changeStatusDAML()
-        cls.up.createUploadDictDC() 
-        cls.up.postDC()
-        cls.up.addCommentDC()
-        cls.up.changeStatusDC()
-        cls.up.linkDAML_DC()
+        try:
+            cls.up.createUploadDictDAML()
+            cls.up.postDAML()
+            cls.up.addCommentDAML()
+            cls.up.changeStatusDAML()
+        except AssertionError as a:
+            print('There are no DAML issues for upload.') 
+            
+        try:
+            cls.up.createUploadDictDC()
+            cls.up.postDC()
+            cls.up.addCommentDC()
+            cls.up.changeStatusDC()
+            cls.up.linkDAML_DC()
+        except AssertionError as a:
+            print('There are no DC issues for upload.') 
 
     @classmethod
     def tearDownClass(cls):
@@ -57,13 +64,13 @@ class TestClass_2(unittest.TestCase):
         _ = [i.delete() for i in issues]
     
     def test_uploadsuccess(self):
-        self.assertEqual(self.up.df.shape, (18,39))
+        self.assertEqual(self.up.df.shape, (18,43))
         
     def test_uploadincorrect(self):
-        self.assertEqual(self.up.incorrect_df.shape, (0, 33))
+        self.assertEqual(self.up.incorrect_df.shape, (0, 34))
     
     def test_uploadincomplete(self):
-        self.assertEqual(self.up.incomplete_df.shape, (0, 36))
+        self.assertEqual(self.up.incomplete_df.shape, (0, 34))
 
 
 @unittest.skip("Skipping TestClass_3")        
@@ -73,15 +80,22 @@ class TestClass_3(unittest.TestCase):
     def setUpClass(cls):
         testfile = '/Users/lilitkhurshudyan/Documents/12_Projects/VW/JIRA/__uploads__/test_upload/DC_only_missing_test.xlsm'
         cls.up = UploadIssues(filename=testfile)
-        cls.up.createUploadDictDAML()
-        cls.up.postDAML()
-        cls.up.addCommentDAML() 
-        cls.up.changeStatusDAML()
-        cls.up.createUploadDictDC() 
-        cls.up.postDC()
-        cls.up.addCommentDC()
-        cls.up.changeStatusDC()
-        cls.up.linkDAML_DC()
+        try:
+            cls.up.createUploadDictDAML()
+            cls.up.postDAML()
+            cls.up.addCommentDAML()
+            cls.up.changeStatusDAML()
+        except AssertionError as a:
+            print('There are no DAML issues for upload.') 
+            
+        try:
+            cls.up.createUploadDictDC()
+            cls.up.postDC()
+            cls.up.addCommentDC()
+            cls.up.changeStatusDC()
+            cls.up.linkDAML_DC()
+        except AssertionError as a:
+            print('There are no DC issues for upload.') 
 
     @classmethod
     def tearDownClass(cls):
@@ -101,21 +115,69 @@ class TestClass_3(unittest.TestCase):
         
 
 @unittest.skip("Skipping TestClass_4")        
-class TestClass_3(unittest.TestCase):
+class TestClass_4(unittest.TestCase):
     
     @classmethod
     def setUpClass(cls):
         testfile = '/Users/lilitkhurshudyan/Documents/12_Projects/VW/JIRA/__uploads__/test_upload/DAML_incorrect_values.xlsm'
         cls.up = UploadIssues(filename=testfile)
-        cls.up.createUploadDictDAML()
-        cls.up.postDAML()
-        cls.up.addCommentDAML() 
-        cls.up.changeStatusDAML()
-        cls.up.createUploadDictDC() 
-        cls.up.postDC()
-        cls.up.addCommentDC()
-        cls.up.changeStatusDC()
-        cls.up.linkDAML_DC()
+        try:
+            cls.up.createUploadDictDAML()
+            cls.up.postDAML()
+            cls.up.addCommentDAML()
+            cls.up.changeStatusDAML()
+        except AssertionError as a:
+            print('There are no DAML issues for upload.') 
+            
+        try:
+            cls.up.createUploadDictDC()
+            cls.up.postDC()
+            cls.up.addCommentDC()
+            cls.up.changeStatusDC()
+            cls.up.linkDAML_DC()
+        except AssertionError as a:
+            print('There are no DC issues for upload.') 
+
+    @classmethod
+    def tearDownClass(cls):
+        jira = Connection(True).jira
+        my_issues = 'creator = currentUser() AND created >= -10m ORDER BY updated DESC'
+        issues = jira.search_issues(my_issues)
+        _ = [i.delete() for i in issues]
+    
+    def test_uploadsuccess(self):
+        self.assertEqual(self.up.df.shape, (6,40))
+        
+    def test_uploadincorrect(self):
+        self.assertEqual(self.up.incorrect_df.shape, (11, 33))
+    
+    def test_uploadincomplete(self):
+        self.assertEqual(self.up.incomplete_df.shape, (0, 34))
+
+        
+@unittest.skip("Skipping TestClass_5")        
+class TestClass_5(unittest.TestCase):
+    
+    @classmethod
+    def setUpClass(cls):
+        testfile = '/Users/lilitkhurshudyan/Documents/12_Projects/VW/JIRA/__uploads__/test_upload/DC_incorrect_values.xlsm'
+        cls.up = UploadIssues(filename=testfile)
+        try:
+            cls.up.createUploadDictDAML()
+            cls.up.postDAML()
+            cls.up.addCommentDAML()
+            cls.up.changeStatusDAML()
+        except AssertionError as a:
+            print('There are no DAML issues for upload.') 
+            
+        try:
+            cls.up.createUploadDictDC()
+            cls.up.postDC()
+            cls.up.addCommentDC()
+            cls.up.changeStatusDC()
+            cls.up.linkDAML_DC()
+        except AssertionError as a:
+            print('There are no DC issues for upload.') 
 
     @classmethod
     def tearDownClass(cls):
@@ -128,7 +190,48 @@ class TestClass_3(unittest.TestCase):
         self.assertEqual(self.up.df.shape, (6,43))
         
     def test_uploadincorrect(self):
-        self.assertEqual(self.up.incorrect_df.shape, (11, 34))
+        self.assertEqual(self.up.incorrect_df.shape, (8, 34))
+    
+    def test_uploadincomplete(self):
+        self.assertEqual(self.up.incomplete_df.shape, (0, 34))
+        
+
+@unittest.skip("Skipping TestClass_6")        
+class TestClass_6(unittest.TestCase):
+    
+    @classmethod
+    def setUpClass(cls):
+        testfile = '/Users/lilitkhurshudyan/Documents/12_Projects/VW/JIRA/__uploads__/test_upload/DC_incorrect_data_reupload.xlsx'
+        cls.up = UploadIssues(filename=testfile)
+        try:
+            cls.up.createUploadDictDAML()
+            cls.up.postDAML()
+            cls.up.addCommentDAML()
+            cls.up.changeStatusDAML()
+        except AssertionError as a:
+            print('There are no DAML issues for upload.') 
+            
+        try:
+            cls.up.createUploadDictDC()
+            cls.up.postDC()
+            cls.up.addCommentDC()
+            cls.up.changeStatusDC()
+            cls.up.linkDAML_DC()
+        except AssertionError as a:
+            print('There are no DC issues for upload.') 
+
+    @classmethod
+    def tearDownClass(cls):
+        jira = Connection(True).jira
+        my_issues = 'creator = currentUser() AND created >= -10m ORDER BY updated DESC'
+        issues = jira.search_issues(my_issues)
+        _ = [i.delete() for i in issues]
+    
+    def test_uploadsuccess(self):
+        self.assertEqual(self.up.df.shape, (8,39))
+        
+    def test_uploadincorrect(self):
+        self.assertEqual(self.up.incorrect_df.shape, (0, 34))
     
     def test_uploadincomplete(self):
         self.assertEqual(self.up.incomplete_df.shape, (0, 34))
