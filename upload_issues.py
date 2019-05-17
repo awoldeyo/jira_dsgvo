@@ -425,7 +425,7 @@ def format_date_column(x):
     try:
         return x.strftime('%Y-%m-%d')
     except (AttributeError, ValueError):
-        return x
+        return ''
 
 def post_issues(x):
     '''Posts Jira issues and returns True/False and Object Key/Error text'''
