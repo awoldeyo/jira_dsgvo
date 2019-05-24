@@ -63,6 +63,8 @@ def getForwardChanges():
                    changelog=True).df
                    
     fw_df.dropna(axis=1, how='all', inplace=True)
+    
+    fw_df = fw_df.loc[:, fw_df.columns.duplicated()==False]
 
     fw_df = fw_df.reindex(columns=cols)
     
@@ -99,6 +101,8 @@ def getBackwardChanges():
     bw_df = JiraDf(bw_issues, jira_client=jira, frontendcolname=True, stringvalues=True, changelog=True).df
 
     bw_df.dropna(axis=1, how='all', inplace=True)
+    
+    bw_df = bw_df.loc[:, bw_df.columns.duplicated()==False]
     
     bw_df = bw_df.reindex(columns=cols)
     
