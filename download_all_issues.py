@@ -1,9 +1,13 @@
+import pytz
+
 import pandas as pd
 from pandas.tseries.offsets import Day
 from pandas.api.types import CategoricalDtype
 
 from cocoa import Connection
 from format_df import JiraDf
+
+tz = pytz.UTC
 
 # Connect to JIRA
 jira = Connection().jira
@@ -68,9 +72,11 @@ dfDC = dfDC.reindex(columns=important_cols)
 # Apply date formatting to "Created"/"date" columns
 dfDC['Created'] = pd.to_datetime(dfDC['Created'])
 dfDC['date'] = pd.to_datetime(dfDC['date'])
+dfDC['Created'] = dfDC['Created'].dt.tz_localize(tz)
+dfDC['date'] = dfDC['date'].dt.tz_localize(tz)
 
 # Create Timestamp for -14 days ago
-fourteen_days_ago = pd.datetime.today() - Day(14)
+fourteen_days_ago = pd.datetime.now(tz) - Day(14)
 
 # Create time filter
 date_range = (dfDC['date']<=fourteen_days_ago)
@@ -117,9 +123,8 @@ dfDC_date_filtered['Created'] = dfDC_date_filtered['Created'].map(
         lambda x: x.strftime('%d.%m.%Y')
         )
 
+# Keep latest changes per key
 dfFinal = dfDC_date_filtered.drop_duplicates(subset=['key'])
-
-dfFinal = dfFinal.sort_values('Status')
 
 # Export final dataframe to excel
 dfFinal.to_excel('All_issues_report.xlsx', sheet_name='Report', index=False)
