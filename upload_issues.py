@@ -44,6 +44,9 @@ class UploadIssues(object):
         self.df['Due-Date implemented'] = self.df['Due-Date implemented'].map(
                 lambda x: format_date_column(x))
         
+        self.df['Handover Date*'] = self.df['Handover Date*'].map(
+                lambda x: format_date_column(x))
+        
         # Fill N/A with empty string for optional columns
         optional_cols = ['Sub Department', 
                          'Contact person (business department)', 

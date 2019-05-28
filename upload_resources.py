@@ -30,6 +30,7 @@ excelname_mapping = {
         'Due-Date implemented': 'customfield_13712',
         'Detailed Type*': 'customfield_13001',
         'Heat-Map': 'customfield_13003',
+        'Handover Date*': 'customfield_13908',
         'Areas of activity Heatmap': 'customfield_13829',
         'Technical implementation needed*':'customfield_13828',
         'Labels': 'labels',
@@ -54,6 +55,7 @@ dc_cols = [
         'Due-Date implemented',
         'Detailed Type*',
         'Heat-Map',
+        'Handover Date*',
         'Areas of activity Heatmap',
         'Technical implementation needed*',
         'Labels',
@@ -91,6 +93,7 @@ mandatory_dc_cols = [
         'Priority DC', 
         'Due-Date implemented',
         'Detailed Type*',
+        'Handover Date*',
         'Technical implementation needed*',
         ]
 
@@ -110,7 +113,10 @@ mandatory_daml_cols = [
         'Priority DAML',
         ]
 
-dtype = {'Due-Date Implemented': 'datetime64[ns]'}
+dtype = {
+        'Due-Date Implemented': 'datetime64[ns]',
+        'Handover Date*': 'datetime64[ns]'
+        }
 
 heatmap = {
         'T:Abschaltung': 1,
@@ -190,6 +196,7 @@ template_cols = [
         'Comment',
         'Detailed Type*',
         'Technical implementation needed*',
+        'Handover Date*',
         'Labels',
         'Linked Issue',
         'Status',
