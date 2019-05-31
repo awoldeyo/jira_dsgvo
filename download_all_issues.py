@@ -87,8 +87,12 @@ dfDC.loc[:, 'to'] = dfDC['to'].astype(cat_type)
 # Apply date formatting to "Created"/"date" columns
 dfDC['Created'] = pd.to_datetime(dfDC['Created'])
 dfDC['date'] = pd.to_datetime(dfDC['date'])
-dfDC['Created'] = dfDC['Created'].dt.tz_localize(tz)
-dfDC['date'] = dfDC['date'].dt.tz_localize(tz)
+
+try:
+    dfDC['Created'] = dfDC['Created'].dt.tz_localize(tz)
+    dfDC['date'] = dfDC['date'].dt.tz_localize(tz)
+except ValueError:
+    pass
 
 # Sort dataframe by key, date and from
 dfDC = dfDC.sort_values(['key', 'date', 'from'], ascending=False)
